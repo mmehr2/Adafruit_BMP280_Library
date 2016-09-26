@@ -155,10 +155,11 @@ class Adafruit_BMP280
       uint32_t temp_ADC;
       uint32_t press_ADC;
     } UncompensatedData;
-    enum { READ_T, READ_TP };
+    enum { READ_T, READ_PT };
     UncompensatedData readSensors(int readType);
-    uint32_t read24I2C(void);
-    uint32_t read24SPI(void);
+
+    uint32_t _readIntI2C(void);
+    uint32_t _readIntSPI(void);
 
     uint8_t   _i2caddr;
     int32_t   _sensorID;

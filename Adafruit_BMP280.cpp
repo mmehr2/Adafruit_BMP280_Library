@@ -242,16 +242,17 @@ uint32_t Adafruit_BMP280::read24(byte reg)
 Adafruit_BMP280::UncompensatedData Adafruit_BMP280::readSensors(int readType)
 {
   UncompensatedData results;
-  byte reg = BMP280_REGISTER_TEMPDATA; // always start with this register
-  byte length = 3;
+  byte reg, length;
   switch (readType) {
-    case READ_TP:
+    case READ_PT:
       length = 6;
+      reg = BMP280_REGISTER_PRESSUREDATA;
       break;
-    // case READ_T:
-    // default:
-    //   length = 3;
-    //   break;
+    case READ_T:
+    default:
+      length = 3;
+      reg = BMP280_REGISTER_TEMPDATA;
+      break;
   }
 
   if (_cs == -1) {
@@ -260,13 +261,12 @@ Adafruit_BMP280::UncompensatedData Adafruit_BMP280::readSensors(int readType)
     Wire.endTransmission();
     Wire.requestFrom((uint8_t)_i2caddr, length);
 
-    //if (length > 0) {
-      results.temp_ADC = read24I2C();
-    //}
-
-    if (length > 3) {
-      results.press_ADC = read24I2C();
+    if (readType == READ_PT) {
+      results.press_ADC = _readIntI2C();
     }
+
+    // always read temperature
+    results.temp_ADC = _readIntI2C();
 
   } else {
     if (_sck == -1)
@@ -274,13 +274,12 @@ Adafruit_BMP280::UncompensatedData Adafruit_BMP280::readSensors(int readType)
     digitalWrite(_cs, LOW);
     spixfer(reg | 0x80); // read, bit 7 high
 
-    //if (length > 0) {
-      results.temp_ADC = read24SPI();
-    //}
-
-    if (length > 3) {
-      results.press_ADC = read24SPI();
+    if (readType == READ_PT) {
+      results.press_ADC = _readIntSPI();
     }
+
+    // always read temperature
+    results.temp_ADC = _readIntSPI();
 
     digitalWrite(_cs, HIGH);
     if (_sck == -1)
@@ -290,7 +289,7 @@ Adafruit_BMP280::UncompensatedData Adafruit_BMP280::readSensors(int readType)
   return results;
 }
 
-uint32_t Adafruit_BMP280::read24I2C(void) {
+uint32_t Adafruit_BMP280::_readIntI2C(void) {
   uint32_t value;
 
   value = Wire.read();
@@ -301,7 +300,7 @@ uint32_t Adafruit_BMP280::read24I2C(void) {
   return value;
 }
 
-uint32_t Adafruit_BMP280::read24SPI(void) {
+uint32_t Adafruit_BMP280::_readIntSPI(void) {
   uint32_t value;
 
   value = spixfer(0);
@@ -345,13 +344,13 @@ float Adafruit_BMP280::readTemperature(void) {
 }
 
 float Adafruit_BMP280::readPressure(void) {
-  UncompensatedData results = readSensors(READ_TP);
+  UncompensatedData results = readSensors(READ_PT);
   compensateTemperature(results.temp_ADC); // must be done first to get t_fine
   return compensatePressure(results.press_ADC);
 }
 
 void Adafruit_BMP280::readAll(float *pT, float *pP) {
-  UncompensatedData results = readSensors(READ_TP);
+  UncompensatedData results = readSensors(READ_PT);
   float V = compensateTemperature(results.temp_ADC); // must be done first to get t_fine
   if (pT) *pT = V;
   if (pP) *pP = compensatePressure(results.press_ADC);
